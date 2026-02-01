@@ -143,8 +143,8 @@
 
   totalCountEl.textContent = MESSAGE.length;
 
-  // ✅ Smaller map (grid)
-  const SIZE = 16;
+  // ✅ map (grid)
+  const SIZE = 20;
   const CELL = canvas.width / SIZE;
 
   // State
@@ -465,7 +465,7 @@
       const x = s.x*CELL, y = s.y*CELL;
       ctx.fillStyle = (i===0) ? "rgba(255,180,215,0.95)" : "rgba(245,245,255,0.85)";
       ctx.fillRect(x+2, y+2, CELL-4, CELL-4);
-      roundRect(x+2, y+2, CELL-4, CELL-4, 3);
+      roundRect(x+2, y+2, CELL-4, CELL-4, 5);
       ctx.fill();
 
       if(i===0){
