@@ -465,6 +465,8 @@
       const x = s.x*CELL, y = s.y*CELL;
       ctx.fillStyle = (i===0) ? "rgba(255,180,215,0.95)" : "rgba(245,245,255,0.85)";
       ctx.fillRect(x+2, y+2, CELL-4, CELL-4);
+      roundRect(x+2, y+2, CELL-4, CELL-4, 3);
+      ctx.fill();
 
       if(i===0){
         ctx.fillStyle="rgba(10,10,18,0.7)";
