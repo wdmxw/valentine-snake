@@ -1,0 +1,532 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>💘 Valentine Snake</title>
+  <style>
+    :root{
+      --bg:#0b0b12; --fg:#f7f7ff; --muted:#b9b9d6;
+      --pink:#ff5590; --pink2:#ffb4d7;
+    }
+    body{
+      margin:0; min-height:100vh; display:grid; place-items:center;
+      background: radial-gradient(1200px 800px at 50% 20%, #1b1033 0%, var(--bg) 60%);
+      color:var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
+    }
+    .wrap{ width:min(560px, 94vw); text-align:center; }
+    h1{ margin:0 0 10px; font-size:22px; font-weight:800; }
+    .sub{ color:var(--muted); font-size:13px; margin-bottom:14px; line-height:1.4; }
+    canvas{
+      width:100%; height:auto;
+      border-radius:18px;
+      background: rgba(255,255,255,0.06);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.45);
+      border: 1px solid rgba(255,255,255,0.12);
+      touch-action: none;
+    }
+    .hud{ display:flex; justify-content:space-between; margin:12px 2px 6px; font-size:13px; color:var(--muted); gap:10px;}
+    .msg{
+      margin-top:10px; padding:12px 14px;
+      border-radius:14px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size:18px; min-height:30px;
+      display:flex; align-items:center; justify-content:center; flex-wrap:wrap; gap:8px;
+    }
+    .pill{
+      display:inline-block; padding:4px 10px; border-radius:999px;
+      background: rgba(255,255,255,0.10);
+      border: 1px solid rgba(255,255,255,0.14);
+      font-size:12px; color:var(--muted);
+    }
+    .btnrow{ margin-top:12px; display:flex; justify-content:center; gap:10px; flex-wrap:wrap; }
+    button{
+      cursor:pointer;
+      border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(255,255,255,0.10);
+      color: var(--fg);
+      padding:10px 14px;
+      border-radius:999px;
+      font-weight:700;
+    }
+    button:hover{ background: rgba(255,255,255,0.14); }
+
+    /* BIG modal */
+    .modal-backdrop{
+      position:fixed; inset:0; background: rgba(0,0,0,0.65);
+      display:none; align-items:center; justify-content:center;
+      padding: 16px;
+      z-index:9999;
+    }
+    .modal{
+      width:min(980px, 96vw);
+      border-radius: 28px;
+      background: rgba(20,20,32,0.96);
+      border:1px solid rgba(255,255,255,0.18);
+      box-shadow: 0 30px 120px rgba(0,0,0,0.6);
+      padding: 40px 34px;
+      transform: scale(1.15); /* ~ “3x minimum” feel via spacing+font+scale */
+    }
+    .modal h2{
+      margin:0 0 18px; font-size:42px; letter-spacing:0.2px;
+    }
+    .modal p{
+      margin:0 0 28px; font-size:28px; color: rgba(255,255,255,0.9); line-height:1.35;
+      white-space:pre-line;
+    }
+    .modal .row{
+      display:flex; gap:18px; justify-content:center; flex-wrap:wrap;
+    }
+    .modal .bigbtn{
+      font-size:30px;
+      padding: 18px 26px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.22);
+      background: rgba(255,255,255,0.10);
+      font-weight:900;
+      min-width: 240px;
+    }
+    .modal .bigbtn.primary{
+      background: rgba(255,85,140,0.18);
+      border-color: rgba(255,85,140,0.45);
+    }
+    .modal .bigbtn:hover{ background: rgba(255,255,255,0.16); }
+    .modal .bigbtn.primary:hover{ background: rgba(255,85,140,0.26); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>💘 Snake, but make it Valentine’s</h1>
+    <div class="sub">
+      Eat hearts to reveal the message. Crash = reset 💔<br/>
+      <span class="pill">Controls: Arrow keys / WASD (mobile: swipe)</span>
+    </div>
+
+    <div class="hud">
+      <div>Hearts eaten: <span id="score">0</span></div>
+      <div>Revealed: <span id="revealCount">0</span>/<span id="totalCount">0</span></div>
+    </div>
+
+    <canvas id="game" width="480" height="480"></canvas>
+
+    <div class="msg"><span id="revealed"></span></div>
+
+    <div class="btnrow">
+      <button id="restartBtn">Restart</button>
+    </div>
+  </div>
+
+  <!-- BIG modals -->
+  <div class="modal-backdrop" id="modalBackdrop" aria-hidden="true">
+    <div class="modal" role="dialog" aria-modal="true">
+      <h2 id="modalTitle"></h2>
+      <p id="modalText"></p>
+      <div class="row" id="modalButtons"></div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ✅ Customize these
+  const MESSAGE = "Will you be my valentine?";
+  const GAME_CREATOR = "Dominykas";
+
+  const canvas = document.getElementById("game");
+  const ctx = canvas.getContext("2d");
+
+  const scoreEl = document.getElementById("score");
+  const revealedEl = document.getElementById("revealed");
+  const revealCountEl = document.getElementById("revealCount");
+  const totalCountEl = document.getElementById("totalCount");
+
+  totalCountEl.textContent = MESSAGE.length;
+
+  // Grid
+  const SIZE = 24;
+  const CELL = canvas.width / SIZE;
+
+  // State
+  let snake, dir, nextDir, heart, heartsEaten, revealIndex;
+  let running = true;
+  let noCount = 0;
+
+  // Modal helpers
+  const backdrop = document.getElementById("modalBackdrop");
+  const mTitle = document.getElementById("modalTitle");
+  const mText  = document.getElementById("modalText");
+  const mBtns  = document.getElementById("modalButtons");
+
+  function showModal({title, text, buttons}) {
+    running = false;
+    mTitle.textContent = title;
+    mText.textContent = text;
+    mBtns.innerHTML = "";
+    for (const b of buttons) {
+      const btn = document.createElement("button");
+      btn.className = "bigbtn" + (b.primary ? " primary" : "");
+      btn.textContent = b.label;
+      btn.onclick = () => b.onClick();
+      mBtns.appendChild(btn);
+    }
+    backdrop.style.display = "flex";
+    backdrop.setAttribute("aria-hidden", "false");
+  }
+  function hideModal() {
+    backdrop.style.display = "none";
+    backdrop.setAttribute("aria-hidden", "true");
+  }
+
+  function randInt(n){ return Math.floor(Math.random()*n); }
+  function samePos(a,b){ return a.x===b.x && a.y===b.y; }
+
+  function placeHeart() {
+    while (true) {
+      const p = { x: randInt(SIZE), y: randInt(SIZE) };
+      if (!snake.some(s => samePos(s,p))) return p;
+    }
+  }
+
+  function resetAll() {
+    snake = [
+      {x: Math.floor(SIZE/2), y: Math.floor(SIZE/2)},
+      {x: Math.floor(SIZE/2)-1, y: Math.floor(SIZE/2)},
+      {x: Math.floor(SIZE/2)-2, y: Math.floor(SIZE/2)}
+    ];
+    dir = {x:1,y:0};
+    nextDir = {x:1,y:0};
+    heart = placeHeart();
+    heartsEaten = 0;
+    revealIndex = 0;
+    running = true;
+    hideModal();
+    updateHUD();
+    draw();
+  }
+
+  function updateHUD() {
+    scoreEl.textContent = heartsEaten;
+    revealCountEl.textContent = revealIndex;
+
+    const shown = MESSAGE.slice(0, revealIndex);
+    const remaining = MESSAGE.slice(revealIndex);
+    const masked = remaining.replace(/./g, " _");
+    revealedEl.innerHTML = `
+      <span>${escapeHtml(shown)}</span>
+      <span style="opacity:.35">${escapeHtml(masked)}</span>
+    `;
+  }
+
+  function escapeHtml(str){
+    return str.replaceAll("&","&amp;")
+      .replaceAll("<","&lt;")
+      .replaceAll(">","&gt;")
+      .replaceAll('"',"&quot;")
+      .replaceAll("'","&#039;");
+  }
+
+  // Input
+  function trySetDir(nx,ny){
+    if (nx === -dir.x && ny === -dir.y) return;
+    nextDir = {x:nx,y:ny};
+  }
+  window.addEventListener("keydown", (e)=>{
+    const k = e.key.toLowerCase();
+    if (k==="arrowup"||k==="w") trySetDir(0,-1);
+    else if (k==="arrowdown"||k==="s") trySetDir(0,1);
+    else if (k==="arrowleft"||k==="a") trySetDir(-1,0);
+    else if (k==="arrowright"||k==="d") trySetDir(1,0);
+  });
+
+  // Mobile swipe
+  let touchStart = null;
+  canvas.addEventListener("touchstart", (e)=>{
+    const t = e.touches[0];
+    touchStart = {x:t.clientX, y:t.clientY};
+  }, {passive:true});
+  canvas.addEventListener("touchend", (e)=>{
+    if(!touchStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    touchStart = null;
+    if (Math.abs(dx) < 18 && Math.abs(dy) < 18) return;
+    if (Math.abs(dx) > Math.abs(dy)) trySetDir(dx>0 ? 1 : -1, 0);
+    else trySetDir(0, dy>0 ? 1 : -1);
+  }, {passive:true});
+
+  document.getElementById("restartBtn").onclick = resetAll;
+
+  // Game loop
+  function tick() {
+    if (!running) return;
+
+    dir = nextDir;
+
+    const head = snake[0];
+    const newHead = {x: head.x + dir.x, y: head.y + dir.y};
+
+    // Wrap
+    if (newHead.x < 0) newHead.x = SIZE-1;
+    else if (newHead.x >= SIZE) newHead.x = 0;
+    if (newHead.y < 0) newHead.y = SIZE-1;
+    else if (newHead.y >= SIZE) newHead.y = 0;
+
+    // Self collision -> reset everything
+    if (snake.some((s,i)=> i!==0 && samePos(s,newHead))) {
+      resetAll();
+      return;
+    }
+
+    snake.unshift(newHead);
+
+    if (samePos(newHead, heart)) {
+      heartsEaten++;
+      if (revealIndex < MESSAGE.length) revealIndex++;
+
+      if (revealIndex >= MESSAGE.length) {
+        updateHUD();
+        draw();
+        onMessageCompleted();
+        return;
+      }
+
+      heart = placeHeart();
+    } else {
+      snake.pop();
+    }
+
+    updateHUD();
+    draw();
+  }
+
+  function onMessageCompleted() {
+    // Stop game while dialogs run
+    running = false;
+
+    // After 3 NOs: both buttons show YES
+    const bothYes = noCount >= 3;
+
+    showModal({
+      title: "💘 Valentine Question 💘",
+      text: MESSAGE + "\n\nSo… what's your answer? 🙂",
+      buttons: bothYes ? [
+        {label:"YES 💖", primary:true, onClick: ()=> onYesChosen() },
+        {label:"YES 💖", onClick: ()=> onYesChosen() }
+      ] : [
+        {label:"YES 💖", primary:true, onClick: ()=> onYesChosen() },
+        {label:"NO 💔", onClick: ()=> onNoChosen() }
+      ]
+    });
+  }
+
+  function onNoChosen() {
+    noCount++;
+
+    // TRY AGAIN, then immediately ask again (no gameplay in between)
+    showModal({
+      title: "😈",
+      text: "TRY AGAIN 😏",
+      buttons: [
+        {label:"OK", primary:true, onClick: ()=>{
+          hideModal();
+          // Immediately show the question again
+          onMessageCompleted();
+        }}
+      ]
+    });
+  }
+
+  function onYesChosen() {
+    // Skip the “YAY best answer” popup — straight to the next one
+    showModal({
+      title: "😈 Important Question 😈",
+      text: "What if I say no?",
+      buttons: [
+        {label:"Nobody cares about your opinion", primary:true, onClick: ()=>{
+          hideModal();
+          const file = generateCertificatePng();
+          showModal({
+            title: "📄 Certificate",
+            text:
+              "✅ Valentine Certificate created!\n\n" +
+              "Downloaded: " + file + "\n\n" +
+              "Instructions:\n" +
+              "1) Open the image\n" +
+              "2) Print it OR sign digitally\n" +
+              "3) Send it to the game creator: " + GAME_CREATOR,
+            buttons: [
+              {label:"OK", primary:true, onClick: ()=>{
+                // Do not return to the game
+                window.location.reload(); // simplest “end”
+              }}
+            ]
+          });
+        }}
+      ]
+    });
+  }
+
+  function generateCertificatePng() {
+    // Create an offscreen canvas certificate (A4-ish at 150dpi)
+    const w = 1654, h = 2339;
+    const c = document.createElement("canvas");
+    c.width = w; c.height = h;
+    const g = c.getContext("2d");
+
+    // Background
+    g.fillStyle = "#ffffff";
+    g.fillRect(0,0,w,h);
+
+    // Borders
+    g.strokeStyle = "#1e1e1e";
+    g.lineWidth = 6;
+    g.strokeRect(70,70,w-140,h-140);
+
+    g.strokeStyle = "#ff5590";
+    g.lineWidth = 3;
+    g.strokeRect(100,100,w-200,h-200);
+
+    // Title
+    g.fillStyle = "#141414";
+    g.font = "bold 64px serif";
+    drawCentered(g, "VALENTINE CERTIFICATE", w, 260);
+
+    g.font = "28px sans-serif";
+    drawCentered(g, "This certifies that the undersigned has officially agreed to:", w, 360);
+
+    g.fillStyle = "#ff5590";
+    g.font = "bold 48px serif";
+    drawCentered(g, "“" + MESSAGE + "”", w, 480);
+
+    // Details
+    g.fillStyle = "#202020";
+    g.font = "26px sans-serif";
+    const date = new Date().toISOString().slice(0,10);
+    g.fillText("Date: " + date, 180, 620);
+    g.fillText("Issued by: " + GAME_CREATOR + " (the game creator)", 180, 670);
+
+    // Signature lines
+    g.strokeStyle = "#202020";
+    g.lineWidth = 3;
+    const lineLeft = 180, lineRight = w-180;
+
+    const sigY = 980;
+    g.beginPath(); g.moveTo(lineLeft,sigY); g.lineTo(lineRight,sigY); g.stroke();
+    g.font = "22px sans-serif";
+    g.fillText("Signature", lineLeft, sigY+40);
+
+    const nameY = 1150;
+    g.beginPath(); g.moveTo(lineLeft,nameY); g.lineTo(lineRight,nameY); g.stroke();
+    g.fillText("Printed name", lineLeft, nameY+40);
+
+    // Footer
+    g.fillStyle = "#555";
+    g.font = "italic 24px sans-serif";
+    drawCentered(g, "Legally binding in the court of cuddles.", w, h-180);
+
+    // Hearts
+    g.fillStyle = "#ff5590";
+    heartShape(g, 180, 190, 26);
+    heartShape(g, w-220, 190, 26);
+    heartShape(g, 200, h-240, 22);
+    heartShape(g, w-240, h-240, 22);
+
+    // Download
+    const fileName = "Valentine_Certificate_" + date + ".png";
+    const url = c.toDataURL("image/png");
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = fileName;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    return fileName;
+  }
+
+  function drawCentered(g, text, W, y){
+    const m = g.measureText(text);
+    g.fillText(text, (W - m.width)/2, y);
+  }
+  function heartShape(g, x, y, s){
+    g.beginPath();
+    g.ellipse(x+s*0.5, y+s*0.5, s*0.5, s*0.5, 0, 0, Math.PI*2);
+    g.ellipse(x+s*1.5, y+s*0.5, s*0.5, s*0.5, 0, 0, Math.PI*2);
+    g.moveTo(x, y+s*0.9);
+    g.lineTo(x+s*2, y+s*0.9);
+    g.lineTo(x+s, y+s*2.2);
+    g.closePath();
+    g.fill();
+  }
+
+  function draw() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Grid
+    ctx.globalAlpha = 0.22;
+    for (let i=0;i<=SIZE;i++){
+      ctx.beginPath();
+      ctx.moveTo(i*CELL,0); ctx.lineTo(i*CELL,canvas.height);
+      ctx.strokeStyle="#fff"; ctx.lineWidth=1; ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0,i*CELL); ctx.lineTo(canvas.width,i*CELL);
+      ctx.stroke(); 
+    }
+    ctx.globalAlpha = 1;
+
+    // Heart
+    drawHeart(heart.x*CELL + CELL/2, heart.y*CELL + CELL/2, CELL*0.42);
+
+    // Snake
+    for (let i=snake.length-1;i>=0;i--){
+      const s = snake[i];
+      const x = s.x*CELL, y = s.y*CELL;
+      ctx.fillStyle = (i===0) ? "rgba(255,180,215,0.95)" : "rgba(245,245,255,0.85)";
+      roundRect(x+2,y+2,CELL-4,CELL-4,8);
+      ctx.fill();
+
+      if(i===0){
+        ctx.fillStyle="rgba(10,10,18,0.7)";
+        const ex=x+CELL/2, ey=y+CELL/2;
+        ctx.beginPath(); ctx.arc(ex-4,ey-2,2,0,Math.PI*2); ctx.fill();
+        ctx.beginPath(); ctx.arc(ex+4,ey-2,2,0,Math.PI*2); ctx.fill();
+      }
+    }
+  }
+
+  function roundRect(x,y,w,h,r){
+    ctx.beginPath();
+    ctx.moveTo(x+r,y);
+    ctx.arcTo(x+w,y,x+w,y+h,r);
+    ctx.arcTo(x+w,y+h,x,y+h,r);
+    ctx.arcTo(x,y+h,x,y,r);
+    ctx.arcTo(x,y,x+w,y,r);
+    ctx.closePath();
+  }
+
+  function drawHeart(cx, cy, size){
+    ctx.save();
+    ctx.translate(cx,cy);
+    ctx.fillStyle="rgba(255,85,140,0.95)";
+    ctx.beginPath();
+    const s=size;
+    ctx.moveTo(0, s*0.35);
+    ctx.bezierCurveTo(s*0.9, -s*0.2, s*0.6, -s*0.95, 0, -s*0.55);
+    ctx.bezierCurveTo(-s*0.6, -s*0.95, -s*0.9, -s*0.2, 0, s*0.35);
+    ctx.closePath();
+    ctx.fill();
+    ctx.globalAlpha=0.25;
+    ctx.fillStyle="#fff";
+    ctx.beginPath();
+    ctx.ellipse(-s*0.2,-s*0.25,s*0.18,s*0.12,-0.6,0,Math.PI*2);
+    ctx.fill();
+    ctx.restore();
+  }
+
+  // Start
+  resetAll();
+  setInterval(tick, 100);
+})();
+</script>
+</body>
+</html>
