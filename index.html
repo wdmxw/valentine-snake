@@ -423,10 +423,15 @@
     drawCentered(g, "Legally binding in the court of law.", w, h-180);
 
     g.fillStyle = "#ff5590";
-    heartShape(g, 180, 190, 26);
-    heartShape(g, w-220, 190, 26);
-    heartShape(g, 200, h-240, 22);
-    heartShape(g, w-240, h-240, 22);
+    g.font = "72px 'Apple Color Emoji','Segoe UI Emoji','Noto Color Emoji',sans-serif";
+    g.textBaseline = "top";
+
+    // Top-left / top-right
+    g.fillText("💖", 145, 140);
+    g.fillText("💖", w - 145 - 72, 140);
+    // Bottom-left / bottom-right
+    g.fillText("💖", 155, h - 190);
+    g.fillText("💖", w - 155 - 72, h - 190);
 
     const fileName = "Valentine_Certificate_" + date + ".png";
     const url = c.toDataURL("image/png");
@@ -442,16 +447,6 @@
   function drawCentered(g, text, W, y){
     const m = g.measureText(text);
     g.fillText(text, (W - m.width)/2, y);
-  }
-  function heartShape(g, x, y, s){
-    g.beginPath();
-    g.ellipse(x+s*0.5, y+s*0.5, s*0.5, s*0.5, 0, 0, Math.PI*2);
-    g.ellipse(x+s*1.5, y+s*0.5, s*0.5, s*0.5, 0, 0, Math.PI*2);
-    g.moveTo(x, y+s*0.9);
-    g.lineTo(x+s*2, y+s*0.9);
-    g.lineTo(x+s, y+s*2.2);
-    g.closePath();
-    g.fill();
   }
 
   function draw() {
