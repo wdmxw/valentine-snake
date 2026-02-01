@@ -350,7 +350,7 @@
   function onYesChosen() {
     showModal({
       title: "😈 Important Question 😈",
-      text: "What if I say no?",
+      text: "What if I say no? 🙄",
       buttons: [
         {label:"Nobody cares about your opinion", primary:true, onClick: ()=>{
           hideModal();
@@ -361,9 +361,9 @@
               "✅ Valentine Certificate created!\n\n" +
               "Downloaded: " + file + "\n\n" +
               "Instructions:\n" +
-              "1) Open the image\n" +
+              "1) Dowload the file\n" +
               "2) Print it OR sign digitally\n" +
-              "3) Send it to the game creator: " + GAME_CREATOR,
+              "3) Send it to the game creator",
             buttons: [
               {label:"OK", primary:true, onClick: ()=> window.location.reload() }
             ]
@@ -422,7 +422,7 @@
 
     g.fillStyle = "#555";
     g.font = "italic 24px sans-serif";
-    drawCentered(g, "Legally binding in the court of cuddles.", w, h-180);
+    drawCentered(g, "Legally binding in the court of law.", w, h-180);
 
     g.fillStyle = "#ff5590";
     heartShape(g, 180, 190, 26);
