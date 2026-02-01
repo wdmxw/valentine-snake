@@ -14,7 +14,7 @@
       background: radial-gradient(1200px 800px at 50% 20%, #1b1033 0%, var(--bg) 60%);
       color:var(--fg); font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Arial;
     }
-    .wrap{ width:min(560px, 94vw); text-align:center; }
+    .wrap{ width:min(520px, 94vw); text-align:center; } /* slightly smaller layout */
     h1{ margin:0 0 10px; font-size:22px; font-weight:800; }
     .sub{ color:var(--muted); font-size:13px; margin-bottom:14px; line-height:1.4; }
     canvas{
@@ -66,7 +66,7 @@
       border:1px solid rgba(255,255,255,0.18);
       box-shadow: 0 30px 120px rgba(0,0,0,0.6);
       padding: 40px 34px;
-      transform: scale(1.15); /* ~ “3x minimum” feel via spacing+font+scale */
+      transform: scale(1.15);
     }
     .modal h2{
       margin:0 0 18px; font-size:42px; letter-spacing:0.2px;
@@ -108,7 +108,8 @@
       <div>Revealed: <span id="revealCount">0</span>/<span id="totalCount">0</span></div>
     </div>
 
-    <canvas id="game" width="480" height="480"></canvas>
+    <!-- ✅ smaller canvas -->
+    <canvas id="game" width="400" height="400"></canvas>
 
     <div class="msg"><span id="revealed"></span></div>
 
@@ -142,8 +143,8 @@
 
   totalCountEl.textContent = MESSAGE.length;
 
-  // Grid
-  const SIZE = 24;
+  // ✅ Smaller map (grid)
+  const SIZE = 16;
   const CELL = canvas.width / SIZE;
 
   // State
@@ -301,10 +302,7 @@
   }
 
   function onMessageCompleted() {
-    // Stop game while dialogs run
     running = false;
-
-    // After 3 NOs: both buttons show YES
     const bothYes = noCount >= 3;
 
     showModal({
@@ -322,15 +320,12 @@
 
   function onNoChosen() {
     noCount++;
-
-    // TRY AGAIN, then immediately ask again (no gameplay in between)
     showModal({
       title: "😈",
       text: "TRY AGAIN 😏",
       buttons: [
         {label:"OK", primary:true, onClick: ()=>{
           hideModal();
-          // Immediately show the question again
           onMessageCompleted();
         }}
       ]
@@ -338,7 +333,6 @@
   }
 
   function onYesChosen() {
-    // Skip the “YAY best answer” popup — straight to the next one
     showModal({
       title: "😈 Important Question 😈",
       text: "What if I say no?",
@@ -357,8 +351,7 @@
               "3) Send it to the game creator: " + GAME_CREATOR,
             buttons: [
               {label:"OK", primary:true, onClick: ()=>{
-                // Do not return to the game
-                window.location.reload(); // simplest “end”
+                window.location.reload();
               }}
             ]
           });
@@ -368,17 +361,14 @@
   }
 
   function generateCertificatePng() {
-    // Create an offscreen canvas certificate (A4-ish at 150dpi)
     const w = 1654, h = 2339;
     const c = document.createElement("canvas");
     c.width = w; c.height = h;
     const g = c.getContext("2d");
 
-    // Background
     g.fillStyle = "#ffffff";
     g.fillRect(0,0,w,h);
 
-    // Borders
     g.strokeStyle = "#1e1e1e";
     g.lineWidth = 6;
     g.strokeRect(70,70,w-140,h-140);
@@ -387,7 +377,6 @@
     g.lineWidth = 3;
     g.strokeRect(100,100,w-200,h-200);
 
-    // Title
     g.fillStyle = "#141414";
     g.font = "bold 64px serif";
     drawCentered(g, "VALENTINE CERTIFICATE", w, 260);
@@ -399,14 +388,12 @@
     g.font = "bold 48px serif";
     drawCentered(g, "“" + MESSAGE + "”", w, 480);
 
-    // Details
     g.fillStyle = "#202020";
     g.font = "26px sans-serif";
     const date = new Date().toISOString().slice(0,10);
     g.fillText("Date: " + date, 180, 620);
     g.fillText("Issued by: " + GAME_CREATOR + " (the game creator)", 180, 670);
 
-    // Signature lines
     g.strokeStyle = "#202020";
     g.lineWidth = 3;
     const lineLeft = 180, lineRight = w-180;
@@ -420,19 +407,16 @@
     g.beginPath(); g.moveTo(lineLeft,nameY); g.lineTo(lineRight,nameY); g.stroke();
     g.fillText("Printed name", lineLeft, nameY+40);
 
-    // Footer
     g.fillStyle = "#555";
     g.font = "italic 24px sans-serif";
     drawCentered(g, "Legally binding in the court of cuddles.", w, h-180);
 
-    // Hearts
     g.fillStyle = "#ff5590";
     heartShape(g, 180, 190, 26);
     heartShape(g, w-220, 190, 26);
     heartShape(g, 200, h-240, 22);
     heartShape(g, w-240, h-240, 22);
 
-    // Download
     const fileName = "Valentine_Certificate_" + date + ".png";
     const url = c.toDataURL("image/png");
     const a = document.createElement("a");
@@ -462,7 +446,6 @@
   function draw() {
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // Grid
     ctx.globalAlpha = 0.22;
     for (let i=0;i<=SIZE;i++){
       ctx.beginPath();
@@ -470,20 +453,18 @@
       ctx.strokeStyle="#fff"; ctx.lineWidth=1; ctx.stroke();
       ctx.beginPath();
       ctx.moveTo(0,i*CELL); ctx.lineTo(canvas.width,i*CELL);
-      ctx.stroke(); 
+      ctx.stroke();
     }
     ctx.globalAlpha = 1;
 
-    // Heart
     drawHeart(heart.x*CELL + CELL/2, heart.y*CELL + CELL/2, CELL*0.42);
 
-    // Snake
+    // ✅ more squared snake (no rounding)
     for (let i=snake.length-1;i>=0;i--){
       const s = snake[i];
       const x = s.x*CELL, y = s.y*CELL;
       ctx.fillStyle = (i===0) ? "rgba(255,180,215,0.95)" : "rgba(245,245,255,0.85)";
-      roundRect(x+2,y+2,CELL-4,CELL-4,8);
-      ctx.fill();
+      ctx.fillRect(x+2, y+2, CELL-4, CELL-4);
 
       if(i===0){
         ctx.fillStyle="rgba(10,10,18,0.7)";
@@ -492,16 +473,6 @@
         ctx.beginPath(); ctx.arc(ex+4,ey-2,2,0,Math.PI*2); ctx.fill();
       }
     }
-  }
-
-  function roundRect(x,y,w,h,r){
-    ctx.beginPath();
-    ctx.moveTo(x+r,y);
-    ctx.arcTo(x+w,y,x+w,y+h,r);
-    ctx.arcTo(x+w,y+h,x,y+h,r);
-    ctx.arcTo(x,y+h,x,y,r);
-    ctx.arcTo(x,y,x+w,y,r);
-    ctx.closePath();
   }
 
   function drawHeart(cx, cy, size){
@@ -525,7 +496,7 @@
 
   // Start
   resetAll();
-  setInterval(tick, 100);
+  setInterval(tick, 110);
 })();
 </script>
 </body>
